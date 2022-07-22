@@ -1,6 +1,59 @@
 module.exports = {
   source: ["tokens/*.json"],
+  parsers: [{
+    pattern: /\.json$/,
+    parse: ({ filePath, contents, ...rest }) => {
+      contents = JSON.parse(contents);
+      const categories = Object.entries(contents);
+      for (const [category, categoryValue] of categories) {
+        const types = Object.entries(categoryValue);
+
+        for (const [type, typeValue] of types) {
+          const items = Object.entries(typeValue);
+
+          for (const [item, itemValue] of items) {
+            if (["gradient", "elevation"].includes(type) && itemValue && !itemValue.type) {
+              const subitems = Object.values(itemValue);
+              contents[category][type][item] = {
+                ...subitems[0],
+                extensions: itemValue.extensions
+              };
+
+              contents[category][type][item].value = subitems.filter(v => v && v.value).map(v => v.value);
+            }
+          }
+        }
+      }
+      return contents;
+    }
+  }],
   platforms: {
+    tailwind: {
+      transformGroup: "tailwind/css",
+      buildPath: "build/tailwind/",
+      files: [
+        {
+          destination: "_variables.css",
+          format: "tailwind/css",
+          filter: "filterWeb",
+          options: {
+            showFileHeader: false,
+          },
+        },
+        {
+          destination: "tokens.js",
+          format: "tailwind/tokens",
+          filter: "filterWeb",
+          options: {
+            showFileHeader: false,
+          },
+        },
+      ],
+      actions: [
+        "tailwind/copy_static_files",
+        "tailwind/convert_css_to_js"
+      ]
+    },
     css: {
       transformGroup: "custom/css",
       buildPath: "build/css/",
